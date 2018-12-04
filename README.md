@@ -15,8 +15,12 @@ ComboTree is a jQuery Plugin which is a combobox item with tree structured data 
 - icontains.js (filtering. It can be found in repository)
  
 ##Configurations:
-- isMultiple: {True/False} | decide if it is multiple selection behaviour or single
 - source: {JSON Data Array} | takes source of combobox dropdown menu as a JSON array.
+- isMultiple: {True/False} | decide if it is multiple selection behaviour or single
+- expandAll: {True/False} | Whether to expand the tree or not.
+- parentIncludesChilds: {True/False} | Whether selecting a parent implicitely means childs are selected as well and thus cannot be selected independently (only for multi select).
+- plusIcon: {string} | Default is "+".
+- minusIcon: {string} | Default is "&minus;"
 
 ##Usage
 
@@ -24,7 +28,11 @@ There should be an input element to apply and a JSON Data source.
 
 	comboTree1 = $('#justAnInputBox').comboTree({
 		source : SampleJSONData,
-		isMultiple: true
+		isMultiple: false,
+		expandAll: false,
+		parentIncludesChilds: false,
+		plusIcon: '<i class="far fa-plus-square"></i>',
+        	minusIcon: '<i class="far fa-minus-square"></i>'
 	});
 
 	// Array, One title/id, or False value return
@@ -34,7 +42,14 @@ There should be an input element to apply and a JSON Data source.
 	// To remove plugin
 	comboTree1.destroy();
 	
-
+	// To use singleItemSelected event
+	window.addEventListener("singleItemSelected", function (evt) {
+		var id = evt.detail.id;
+		var name = evt.detail.title;
+		console.log('ID: ' + id);
+		console.log('Name: ' + name);
+    	}, false);
+	
 
 ##Sample JSON DATA
 
