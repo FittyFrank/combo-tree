@@ -12,7 +12,11 @@
     var comboTreePlugin = 'comboTree',
         defaults = {
             source: [], 
-            isMultiple: false
+            isMultiple: false,
+            expandAll: false,
+            parentIncludesChilds: true,
+            plusIcon: '+',
+            minusIcon: '&minus;'
         };
 
     // The actual plugin constructor
@@ -58,6 +62,13 @@
         this._selectedItems = [];
 
         this.bindings();
+        
+        // trigger click event on all preselected items
+        if(this.options.isMultiple)
+            $(this._elemItems).children('span.comboTreeItemTitle').children('input:checked').parent().click();
+        else
+            $(this._elemItems).children('span.comboTreeItemSelected').click();
+        
     };
 
 
@@ -71,12 +82,12 @@
     };
 
     ComboTree.prototype.createSourceHTML = function () {
-        var htmlText = this.createSourceSubItemsHTML(this.options.source);
+        var htmlText = this.createSourceSubItemsHTML(this.options.source, true);
         return htmlText;
     };
 
-    ComboTree.prototype.createSourceSubItemsHTML = function (subItems) {
-        var subItemsHtml = '<UL>';
+    ComboTree.prototype.createSourceSubItemsHTML = function (subItems, isroot) {
+        var subItemsHtml = '<UL' + (this.options.expandAll || isroot?'':' style="display:none" ') +'>';
         for (var i=0; i<subItems.length; i++){
             subItemsHtml += this.createSourceItemHTML(subItems[i]);
         }
@@ -86,20 +97,24 @@
 
     ComboTree.prototype.createSourceItemHTML = function (sourceItem) {
         var itemHtml = "",
-            isThereSubs = sourceItem.hasOwnProperty("subs");
+            isThereSubs = sourceItem.hasOwnProperty("subs") && !jQuery.isEmptyObject(sourceItem.subs);
         
         itemHtml = '<LI class="ComboTreeItem' + (isThereSubs?'Parent':'Chlid') + '"> ';
         
         if (isThereSubs)
-            itemHtml += '<span class="comboTreeParentPlus">&minus;</span>';
+            itemHtml += '<span class="comboTreeParentPlus">' + (this.options.expandAll ? this.options.minusIcon : this.options.plusIcon) + '</span>';
 
         if (this.options.isMultiple)
-            itemHtml += '<span data-id="' + sourceItem.id + '" class="comboTreeItemTitle"><input type="checkbox">' + sourceItem.title + '</span>';
+            itemHtml += '<span data-id="' + sourceItem.id + '" class="comboTreeItemTitle">' +
+                            '<input type="checkbox"' + (sourceItem.preselect?' checked="checked"':'') + '>' + sourceItem.title +
+                        '</span>';
         else
-            itemHtml += '<span data-id="' + sourceItem.id + '" class="comboTreeItemTitle">' + sourceItem.title + '</span>';
+            itemHtml += '<span data-id="' + sourceItem.id + '" class="comboTreeItemTitle' + (sourceItem.preselect?' comboTreeItemSelected':'') + '">' + 
+                            sourceItem.title + 
+                        '</span>';
 
         if (isThereSubs)
-            itemHtml += this.createSourceSubItemsHTML(sourceItem.subs);
+            itemHtml += this.createSourceSubItemsHTML(sourceItem.subs, false);
 
         itemHtml += '</LI>';
         return itemHtml;
@@ -114,12 +129,19 @@
         this._elemArrowBtn.on('click', function(e){
             e.stopPropagation();
             _this.toggleDropDown();
+            return false;
         });
         this._elemInput.on('click', function(e){
             e.stopPropagation();
             if (!_this._elemDropDownContainer.is(':visible'))
                 _this.toggleDropDown();
         });
+        if (_this.options.isMultiple) {
+            this._elemInput.on('focus', function (e) {
+                e.preventDefault();
+                $(this).blur();
+            });
+        }
         this._elemItems.on('click', function(e){
             e.stopPropagation();
             if ($(this).hasClass('ComboTreeItemParent')){
@@ -206,19 +228,19 @@
         var subMenu = $(item).children('ul')[0];
         if (direction === undefined){
             if ($(subMenu).is(':visible'))
-                $(item).children('span.comboTreeParentPlus').html("+");
+                $(item).children('span.comboTreeParentPlus').html(this.options.plusIcon);
             else
-                $(item).children('span.comboTreeParentPlus').html("&minus;");
+                $(item).children('span.comboTreeParentPlus').html(this.options.minusIcon);
 
             $(subMenu).slideToggle(50);
         }
         else if (direction == 1 && !$(subMenu).is(':visible')){
-                $(item).children('span.comboTreeParentPlus').html("&minus;");
+            $(item).children('span.comboTreeParentPlus').html(this.options.minusIcon);
                 $(subMenu).slideDown(50);
         }
         else if (direction == -1){
             if ($(subMenu).is(':visible')){
-                $(item).children('span.comboTreeParentPlus').html("+");
+                $(item).children('span.comboTreeParentPlus').html(this.options.plusIcon);
                 $(subMenu).slideUp(50);
             }
             else {
@@ -236,11 +258,17 @@
             id: $(ctItem).attr("data-id"),
             title: $(ctItem).text()
         };
-
         this.refreshInputVal();
         this.closeDropDownMenu();
+
+        // Create event for this action and pass selectedItem object as a parameter
+        var evt = document.createEvent("CustomEvent");
+        evt.initCustomEvent("singleItemSelected", true, true, this._selectedItem);
+        window.dispatchEvent(evt);
     };
     ComboTree.prototype.multiItemClick = function (ctItem) {
+        if($(ctItem).find("input").prop('disabled'))
+            return;
         this._selectedItem = {
             id: $(ctItem).attr("data-id"),
             title: $(ctItem).text()
@@ -250,10 +278,17 @@
         if (index){
             this._selectedItems.splice(parseInt(index), 1);
             $(ctItem).find("input").prop('checked', false);
+            if(this.options.parentIncludesChilds)
+                $(ctItem).next('ul').find(':checkbox').prop("disabled", false).prop('checked', false);
         }
         else {
             this._selectedItems.push(this._selectedItem);
             $(ctItem).find("input").prop('checked', true);
+            if(this.options.parentIncludesChilds) {
+                $(ctItem).next('ul').find(':checked').parent().click();
+                $(ctItem).next('ul').find(':checkbox').prop("checked", true);
+                $(ctItem).next('ul').find(':checkbox').prop("disabled", true);
+            }
         }
 
         this.refreshInputVal();
@@ -408,7 +443,3 @@
     }
 
 })( jQuery, window, document );
-
-
-
-
