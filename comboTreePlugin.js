@@ -11,6 +11,7 @@
     // Create the defaults once
     var comboTreePlugin = 'comboTree',
         defaults = {
+            comboTreeName: '',
             source: [], 
             isMultiple: false,
             expandAll: false,
@@ -34,8 +35,11 @@
 
     ComboTree.prototype.init = function () {
         // Setting Doms
-        this.comboTreeId = 'comboTree' + Math.floor(Math.random() * 999999);
-
+        if (this.options.ComboTreeName === '') {
+            this.comboTreeId = 'comboTree' + Math.floor(Math.random() * 999999);
+        } else {
+            this.comboTreeId = 'comboTree' + this.options.comboTreeName;
+        }
         this._elemInput.addClass('comboTreeInputBox');
 
         if(this._elemInput.attr('id') === undefined)
@@ -254,16 +258,24 @@
     // SELECTION FUNCTIONS
     // *****************************
     ComboTree.prototype.singleItemClick = function (ctItem) {
+        var id = $(ctItem).attr("data-id");
+        var title = $(ctItem).text();
+        var parent = $(ctItem).offsetParent().attr('id');
         this._selectedItem = {
-            id: $(ctItem).attr("data-id"),
-            title: $(ctItem).text()
+            id: id,
+            title: title
         };
         this.refreshInputVal();
         this.closeDropDownMenu();
 
         // Create event for this action and pass selectedItem object as a parameter
         var evt = document.createEvent("CustomEvent");
-        evt.initCustomEvent("singleItemSelected", true, true, this._selectedItem);
+        var oParam = {
+            id: id,
+            title: title,
+            parent: parent
+        };
+        evt.initCustomEvent("singleItemSelected", true, true, oParam);
         window.dispatchEvent(evt);
     };
     ComboTree.prototype.multiItemClick = function (ctItem) {
